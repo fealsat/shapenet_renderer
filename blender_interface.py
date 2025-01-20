@@ -19,7 +19,7 @@ class BlenderInterface():
         self.center_mode = config['object']['center_mode']
         # Output directory
         self.out_dir = config['out_dir']
-        
+
         # Set up the camera & lighting
         self.camera = self.setup_camera_rendering()
         self.sun_light = self.setup_lighting()
@@ -29,7 +29,7 @@ class BlenderInterface():
     # Setup camera & rendering parameters
     def setup_camera_rendering(self):
         cam = self.config['rendering']['camera']
-        
+
         def fit_to_view(im_w, im_h, fov, dims):
             fov_y = 2.0 * np.arctan(np.tan(fov / 2) / (im_w / im_h))
             r = np.linalg.norm(dims) * 0.5 * 1.1
@@ -102,7 +102,7 @@ class BlenderInterface():
         return r / min(np.tan(fov / 2), np.tan(fov_y / 2))
 
     def import_mesh(self, fpath):
-        # deselect everything    
+        # deselect everything
         bpy.ops.object.select_all(action='DESELECT')
 
         ext = os.path.splitext(fpath)[-1]
@@ -162,23 +162,23 @@ class BlenderInterface():
     def render(self, instance_name, positions, write_cam_params=False):
         bpy.context.scene.view_layers["ViewLayer"].use_pass_z = True
         bpy.context.scene.view_layers["ViewLayer"].use_pass_normal = True
-    
+
         # Create the output directory
         if not os.path.exists(self.out_dir):
             os.makedirs(self.out_dir)
         obj_dir = os.path.join(self.out_dir, instance_name)
         os.makedirs(obj_dir, exist_ok=True)
-        
+
         im_w = bpy.context.scene.render.resolution_x
         im_h = bpy.context.scene.render.resolution_y
-        
+
         if write_cam_params:
             img_dir = os.path.join(obj_dir, 'rgb')
             pose_dir = os.path.join(obj_dir, 'pose')
 
             util.cond_mkdir(img_dir)
             util.cond_mkdir(pose_dir)
-            
+
             K = util.get_calibration_matrix_K_from_blender(self.camera.data)
             im_w = bpy.context.scene.render.resolution_x
             im_h = bpy.context.scene.render.resolution_y
@@ -192,7 +192,7 @@ class BlenderInterface():
             util.cond_mkdir(img_dir)
 
         # whether to generate EXR or not
-        use_exr = config['rendering']['use_exr']
+        use_exr = self.config['rendering']['use_exr']
 
         bpy.context.scene.frame_set(0)
         for i, pos in enumerate(positions):
