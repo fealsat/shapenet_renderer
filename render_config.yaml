@@ -31,10 +31,11 @@ lighting:
     ambient_light: [0.2, 0.2, 0.2, 1.0]
             
 rendering:
+    use_exr: false
     camera:
         # image resolution
-        width: 1024
-        height: 1024
+        width: 256
+        height: 256
         # camera fov
         fov: 0.785  # 45 degrees
     shadow:

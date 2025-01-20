@@ -191,6 +191,9 @@ class BlenderInterface():
             img_dir = self.out_dir
             util.cond_mkdir(img_dir)
 
+        # whether to generate EXR or not
+        use_exr = config['rendering']['use_exr']
+
         bpy.context.scene.frame_set(0)
         for i, pos in enumerate(positions):
             self.camera.location = pos
@@ -198,10 +201,11 @@ class BlenderInterface():
             file_path = os.path.join(img_dir, '%06d'%i)
             # set current frame
             bpy.context.scene.frame_set(i)
-            # render EXR
-            bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
-            bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'exr')
-            bpy.ops.render.render(write_still=True)
+            if use_exr:
+                # render EXR
+                bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
+                bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'exr')
+                bpy.ops.render.render(write_still=True)
             # render PNG
             bpy.context.scene.render.image_settings.file_format = 'PNG'
             bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'png')
