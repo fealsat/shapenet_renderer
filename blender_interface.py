@@ -1,125 +1,210 @@
 import os
 import util
 import bpy
+import numpy as np
 
 
 class BlenderInterface():
-    def __init__(self, resolution=128, background_color=(1,1,1)):
-        self.resolution = resolution
+    def __init__(self, config):
+        self.config = config
 
         # Delete the default cube (default selected)
-        bpy.ops.object.delete()
+        for obj in bpy.data.objects:
+            bpy.data.objects.remove(obj)
+        bpy.ops.object.select_all(action='DESELECT')
 
-        # Deselect all. All new object added to the scene will automatically selected.
-        self.blender_renderer = bpy.context.scene.render
-        self.blender_renderer.use_antialiasing = False
-        self.blender_renderer.resolution_x = resolution
-        self.blender_renderer.resolution_y = resolution
-        self.blender_renderer.resolution_percentage = 100
-        self.blender_renderer.image_settings.file_format = 'PNG'  # set output format to .png
-
-        self.blender_renderer.alpha_mode = 'SKY'
-
-        world = bpy.context.scene.world
-        world.horizon_color = background_color
-        world.light_settings.use_environment_light = True
-        world.light_settings.environment_color = 'SKY_COLOR'
-        world.light_settings.environment_energy = 1.
-
-        lamp1 = bpy.data.lamps['Lamp']
-        lamp1.type = 'SUN'
-        lamp1.shadow_method = 'NOSHADOW'
-        lamp1.use_specular = False
-        lamp1.energy = 1.
-
-        bpy.ops.object.lamp_add(type='SUN')
-        lamp2 = bpy.data.lamps['Sun']
-        lamp2.shadow_method = 'NOSHADOW'
-        lamp2.use_specular = False
-        lamp2.energy = 1.
-        bpy.data.objects['Sun'].rotation_euler = bpy.data.objects['Lamp'].rotation_euler
-        bpy.data.objects['Sun'].rotation_euler[0] += 180
-
-        bpy.ops.object.lamp_add(type='SUN')
-        lamp2 = bpy.data.lamps['Sun.001']
-        lamp2.shadow_method = 'NOSHADOW'
-        lamp2.use_specular = False
-        lamp2.energy = 0.3
-        bpy.data.objects['Sun.001'].rotation_euler = bpy.data.objects['Lamp'].rotation_euler
-        bpy.data.objects['Sun.001'].rotation_euler[0] += 90
-
-        # Set up the camera
-        self.camera = bpy.context.scene.camera
-        self.camera.data.sensor_height = self.camera.data.sensor_width # Square sensor
-        util.set_camera_focal_length_in_world_units(self.camera.data, 525./512*resolution) # Set focal length to a common value (kinect)
+        # Object to render
+        self.obj = None
+        self.scale = config['object']['scale']
+        self.center_mode = config['object']['center_mode']
+        # Output directory
+        self.out_dir = config['out_dir']
+        
+        # Set up the camera & lighting
+        self.camera = self.setup_camera_rendering()
+        self.sun_light = self.setup_lighting()
 
         bpy.ops.object.select_all(action='DESELECT')
 
-    def import_mesh(self, fpath, scale=1., object_world_matrix=None):
+    # Setup camera & rendering parameters
+    def setup_camera_rendering(self):
+        cam = self.config['rendering']['camera']
+        
+        def fit_to_view(im_w, im_h, fov, dims):
+            fov_y = 2.0 * np.arctan(np.tan(fov / 2) / (im_w / im_h))
+            r = np.linalg.norm(dims) * 0.5 * 1.1
+            return r / min(np.tan(fov / 2), np.tan(fov_y / 2))
+
+        bpy.ops.object.empty_add(type='ARROWS', location=(0, 0, 0))
+        empty = bpy.context.view_layer.objects.active
+
+        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
+        bpy.context.scene.camera = bpy.data.objects["Camera"]
+        camera = bpy.context.view_layer.objects.active
+        camera_const = camera.constraints.new(type='TRACK_TO')
+        camera_const.target = empty
+        camera.data.lens_unit = 'FOV'
+        camera.data.angle = cam['fov']
+        bpy.context.scene.render.resolution_x = cam['width']
+        bpy.context.scene.render.resolution_y = cam['height']
+        bpy.context.scene.render.resolution_percentage = 100
+        camera.data.sensor_height = camera.data.sensor_width # Square sensor
+
+        # Rendering
+        rendering = self.config['rendering']
+        bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+        bpy.context.scene.eevee.shadow_cascade_size = rendering['shadow']['cascade_size']
+        bpy.context.scene.eevee.use_soft_shadows = rendering['shadow']['use_soft_shadows']
+        ao = rendering['ao']
+        bpy.context.scene.eevee.use_gtao = ao['enable']
+        bpy.context.scene.eevee.gtao_distance = ao['distance']
+        bpy.context.scene.eevee.use_gtao_bent_normals = ao['use_bent_normals']
+        bpy.context.scene.eevee.use_gtao_bounce = ao['use_bounce']
+        bpy.context.scene.view_settings.view_transform = rendering['color_management']['view_transform']
+        bpy.context.scene.view_settings.look = rendering['color_management']['look']
+
+        return camera
+
+    # Setup lighting
+    def setup_lighting(self):
+        bpy.ops.object.light_add(type='SUN', location=(0, 0, 0))
+        sun_light = bpy.context.view_layer.objects.active
+
+        lighting = self.config['lighting']
+        sun_lighting = lighting['sun_light']
+        if lighting['enable']:
+            is_random = lighting['is_random']
+            sun_light.rotation_euler[1] = np.random.uniform(-np.pi / 3, np.pi / 3) if is_random else sun_lighting['rotation_euler_y']
+            sun_light.rotation_euler[2] = np.random.uniform(0, 2 * np.pi) if is_random else sun_lighting['rotation_euler_z']
+
+        sun_light.data.energy = sun_lighting['energy'] if lighting['enable'] else 0.0
+        sun_light.data.use_shadow = sun_lighting['use_shadow']
+        sun_light.data.use_contact_shadow = sun_lighting['use_shadow']
+        sun_light.data.contact_shadow_distance = sun_lighting['contact_shadow']['distance']
+        sun_light.data.contact_shadow_thickness = sun_lighting['contact_shadow']['thickness']
+        sun_light.data.shadow_cascade_count = sun_lighting['cascade_count']
+        sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
+
+        bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = lighting['ambient_light']
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        return sun_light
+
+    def fit_to_view(self):
+        intrin = self.config['rendering']['camera']
+        fov = intrin['fov']
+        im_w = intrin['width']
+        im_h = intrin['height']
+        dims = self.obj.dimensions
+        fov_y = 2.0 * np.arctan(np.tan(fov / 2) / (im_w / im_h))
+        r = np.linalg.norm(dims) * 0.5 * 1.1
+        return r / min(np.tan(fov / 2), np.tan(fov_y / 2))
+
+    def import_mesh(self, fpath):
+        # deselect everything    
+        bpy.ops.object.select_all(action='DESELECT')
+
         ext = os.path.splitext(fpath)[-1]
         if ext == '.obj':
-            bpy.ops.import_scene.obj(filepath=str(fpath), split_mode='OFF')
+            bpy.ops.wm.obj_import(filepath=str(fpath))
         elif ext == '.ply':
-            bpy.ops.import_mesh.ply(filepath=str(fpath))
+            bpy.ops.wm.ply_import(filepath=str(fpath))
+        elif ext == '.gltf':
+            bpy.ops.import_scene.gltf(filepath=fpath, loglevel=50, import_shading='SMOOTH')
+        # optionally scale the object
+        bpy.ops.transform.resize(value=(self.scale, self.scale, self.scale))
+        # join multiple objects together for simplicity
+        bpy.ops.object.join()
 
-        obj = bpy.context.selected_objects[0]
-        util.dump(bpy.context.selected_objects)
+        obj = bpy.context.view_layer.objects.active
+        obj.name = os.path.basename(fpath)
 
-        if object_world_matrix is not None:
-            obj.matrix_world = object_world_matrix
+        # Center the object at the origin
+        v_coords = [obj.matrix_world @ v.co for v in obj.data.vertices]
+        min_x = min(co.x for co in v_coords)
+        min_y = min(co.y for co in v_coords)
+        if self.center_mode == 'min':
+            min_z = min(co.z for co in v_coords)  # min / max, center vertically
+        else:
+            min_z = sum(co.z for co in v_coords) / len(v_coords)  # vertical center of mass
 
-        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        obj.location = (0., 0., 0.) # center the bounding box!
+        offset = np.array([min_x, min_y, min_z]) + np.array(obj.dimensions) / 2
+        offset[2] = min_z
+        bpy.context.scene.cursor.location = offset
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+        obj.location = (0, 0, 0)
 
-        if scale != 1.:
-            bpy.ops.transform.resize(value=(scale, scale, scale))
+        # Add Edge Split modifier
+        edge_split = obj.modifiers.new('EdgeSplit', type='EDGE_SPLIT')
 
-        # Disable transparency & specularities
-        M = bpy.data.materials
-        for i in range(len(M)):
-            M[i].use_transparency = False
-            M[i].specular_intensity = 0.0
+        util.dump(obj)
 
-        # Disable texture interpolation
-        T = bpy.data.textures
-        for i in range(len(T)):
-            try:
-                T[i].use_interpolation = False
-                T[i].use_mipmap = False
-                T[i].use_filter_size_min = True
-                T[i].filter_type = "BOX"
-            except:
-                continue
+        # Adjust materials
+        materials = obj.data.materials
+        for m in materials:
+            if m.node_tree.nodes:
+                for n in m.node_tree.nodes:
+                    # Check if material has metallic & roughness
+                    if 'Principled BSDF' in n.name:
+                        n['Metallic'] = 0.0
+                        n['Roughness'] = 1.0
+                    # Disable texture interpolation
+                    if 'Image Texture' in n.name:
+                        n.interpolation = 'Closest' 
+            # Disable alpha blending
+            m.blend_method = 'OPAQUE'
 
-    def render(self, output_dir, blender_cam2world_matrices, write_cam_params=False):
+        self.obj = obj
 
+        bpy.ops.object.select_all(action='DESELECT')
+
+    def render(self, instance_name, positions, write_cam_params=False):
+        bpy.context.scene.view_layers["ViewLayer"].use_pass_z = True
+        bpy.context.scene.view_layers["ViewLayer"].use_pass_normal = True
+    
+        # Create the output directory
+        if not os.path.exists(self.out_dir):
+            os.makedirs(self.out_dir)
+        obj_dir = os.path.join(self.out_dir, instance_name)
+        os.makedirs(obj_dir, exist_ok=True)
+        
+        im_w = bpy.context.scene.render.resolution_x
+        im_h = bpy.context.scene.render.resolution_y
+        
         if write_cam_params:
-            img_dir = os.path.join(output_dir, 'rgb')
-            pose_dir = os.path.join(output_dir, 'pose')
+            img_dir = os.path.join(obj_dir, 'rgb')
+            pose_dir = os.path.join(obj_dir, 'pose')
 
             util.cond_mkdir(img_dir)
             util.cond_mkdir(pose_dir)
-        else:
-            img_dir = output_dir
-            util.cond_mkdir(img_dir)
-
-        if write_cam_params:
+            
             K = util.get_calibration_matrix_K_from_blender(self.camera.data)
-            with open(os.path.join(output_dir, 'intrinsics.txt'),'w') as intrinsics_file:
+            im_w = bpy.context.scene.render.resolution_x
+            im_h = bpy.context.scene.render.resolution_y
+            with open(os.path.join(obj_dir, 'intrinsics.txt'),'w') as intrinsics_file:
                 intrinsics_file.write('%f %f %f 0.\n'%(K[0][0], K[0][2], K[1][2]))
                 intrinsics_file.write('0. 0. 0.\n')
                 intrinsics_file.write('1.\n')
-                intrinsics_file.write('%d %d\n'%(self.resolution, self.resolution))
+                intrinsics_file.write('%d %d\n'%(im_h, im_w))
+        else:
+            img_dir = self.out_dir
+            util.cond_mkdir(img_dir)
 
-        for i in range(len(blender_cam2world_matrices)):
-            self.camera.matrix_world = blender_cam2world_matrices[i]
-
-            # Render the object
-            if os.path.exists(os.path.join(img_dir, '%06d.png' % i)):
-                continue
-
-            # Render the color image
-            self.blender_renderer.filepath = os.path.join(img_dir, '%06d.png'%i)
+        bpy.context.scene.frame_set(0)
+        for i, pos in enumerate(positions):
+            self.camera.location = pos
+            self.camera.keyframe_insert(data_path="location", frame=i)
+            file_path = os.path.join(img_dir, '%06d'%i)
+            # set current frame
+            bpy.context.scene.frame_set(i)
+            # render EXR
+            bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
+            bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'exr')
+            bpy.ops.render.render(write_still=True)
+            # render PNG
+            bpy.context.scene.render.image_settings.file_format = 'PNG'
+            bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'png')
             bpy.ops.render.render(write_still=True)
 
             if write_cam_params:
@@ -133,13 +218,4 @@ class BlenderInterface():
                             matrix_flat.append(cam2world[j][k])
                     pose_file.write(' '.join(map(str, matrix_flat)) + '\n')
 
-        # Remember which meshes were just imported
-        meshes_to_remove = []
-        for ob in bpy.context.selected_objects:
-            meshes_to_remove.append(ob.data)
-
-        bpy.ops.object.delete()
-
-        # Remove the meshes from memory too
-        for mesh in meshes_to_remove:
-            bpy.data.meshes.remove(mesh)
+        bpy.data.objects.remove(self.obj)

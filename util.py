@@ -1,7 +1,8 @@
-import random
-import bpy
-from mathutils import Matrix, Vector
 import os
+import bpy
+import yaml
+import random
+from mathutils import Matrix, Vector
 import numpy as np
 import math
 from functools import reduce
@@ -129,11 +130,11 @@ def get_world2cam_from_blender_cam(cam):
     # Convert camera location to translation vector used in coordinate changes
     # T_world2bcam = -1*R_world2bcam*cam.location
     # Use location from matrix_world to account for constraints:
-    T_world2bcam = -1 * R_world2bcam * location
+    T_world2bcam = -1 * R_world2bcam @ location
 
     # Build the coordinate transform matrix from world to computer vision camera
-    R_world2cv = R_bcam2cv * R_world2bcam
-    T_world2cv = R_bcam2cv * T_world2bcam
+    R_world2cv = R_bcam2cv @ R_world2bcam
+    T_world2cv = R_bcam2cv @ T_world2bcam
 
     # put into 3x4 matrix
     RT = Matrix((
@@ -202,7 +203,22 @@ def dump(obj):
         if hasattr(obj, attr):
             print("obj.%s = %s" % (attr, getattr(obj, attr)))
 
-def get_archimedean_spiral(sphere_radius, num_steps=250):
+
+# Load configuration from YAML
+def load_config(config_path):
+    try:
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        print(f"Error loading configuration: {e}")
+        sys.exit(1)
+
+
+def is_allowed_type(fp):
+    return any(ext in fp for ext in ['.gltf', '.obj', '.ply'])
+
+
+def sample_archimedean_spiral(sphere_radius, num_steps=250):
     '''
     https://en.wikipedia.org/wiki/Spiral, section "Spherical spiral". c = a / pi
     '''
@@ -213,12 +229,18 @@ def get_archimedean_spiral(sphere_radius, num_steps=250):
 
     i = a / 2
     while i < a:
-        theta = i / a * math.pi
-        x = r * math.sin(theta) * math.cos(-i)
-        z = r * math.sin(-theta + math.pi) * math.sin(-i)
-        y = r * - math.cos(theta)
+        theta = i / a * np.pi
+        x = r * np.sin(theta) * np.cos(-i)
+        y = r * np.sin(-theta + np.pi) * np.sin(-i)
+        z = r * - np.cos(theta)
 
         translations.append((x, y, z))
         i += a / (2 * num_steps)
 
     return np.array(translations)
+
+
+def sample_spherical(radius, num_steps=250):
+    xyz = np.random.normal(size=(num_steps, 3))
+    xyz = normalize(xyz) * radius
+    return xyz
