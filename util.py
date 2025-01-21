@@ -1,6 +1,6 @@
 import os
 import bpy
-import yaml
+import json
 import random
 from mathutils import Matrix, Vector
 import numpy as np
@@ -208,7 +208,7 @@ def dump(obj):
 def load_config(config_path):
     try:
         with open(config_path, "r") as f:
-            return yaml.safe_load(f)
+            return json.load(f)
     except Exception as e:
         print(f"Error loading configuration: {e}")
         sys.exit(1)

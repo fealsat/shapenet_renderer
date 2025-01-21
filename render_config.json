@@ -1,0 +1,51 @@
+{
+  "file_path": "",
+  "out_dir": "./out_dir",
+  "num_observations": 32,
+  "mode": "test",
+  "object": {
+    "scale": 100,
+    "center_mode": "mean"
+  },
+  "lighting": {
+    "enable": true,
+    "is_random": true,
+    "sun_light": {
+      "rotation_euler_y": 0,
+      "rotation_euler_z": 0,
+      "energy": 5.0,
+      "radius": 0.00686,
+      "use_shadow": true,
+      "contact_shadow": {
+        "distance": 2.0,
+        "thickness": 0.2
+      },
+      "cascade_count": 4,
+      "cascade_max_distance": 500
+    },
+    "ambient_light": [0.2, 0.2, 0.2, 1.0]
+  },
+  "rendering": {
+    "use_exr": false,
+    "camera": {
+      "width": 256,
+      "height": 256,
+      "fov": 0.785
+    },
+    "shadow": {
+      "cascade_size": "4096",
+      "use_soft_shadows": true
+    },
+    "ao": {
+      "enable": true,
+      "distance": 1.0,
+      "use_bounce": false,
+      "use_bent_normals": false
+    },
+    "color_management": {
+      "view_transform": "Filmic",
+      "look": "High Contrast"
+    }
+  }
+}
+
