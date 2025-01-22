@@ -48,16 +48,6 @@ def main():
         elif config['mode'] == 'test':
             positions = util.sample_archimedean_spiral(radius, num_observations)
 
-        # obj_location = np.zeros((1,3))
-
-        # cv_poses = util.look_at(cam_locations, obj_location)
-        # blender_poses = [util.cv_cam2world_to_bcam2world(m) for m in cv_poses]
-
-        # rot_mat = np.eye(3)
-        # hom_coords = np.array([[0., 0., 0., 1.]]).reshape(1, 4)
-        # obj_pose = np.concatenate((rot_mat, obj_location.reshape(3,1)), axis=-1)
-        # obj_pose = np.concatenate((obj_pose, hom_coords), axis=0)
-
         renderer.render(instance_name, positions, write_cam_params=True)
 
 
