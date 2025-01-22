@@ -32,6 +32,7 @@ def main():
                 "-framerate", f"{fps}",
                 "-i", os.path.join(subfolder_path, "%06d.png"),
                 # "-vf", f"fps={fps},scale={resolution}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                "-s", f"{resolution}:{resolution}",
                 "-loop", "0",
                 output_gif_path
             ]
