@@ -11,7 +11,7 @@ import blender_interface
 def main():
     p = argparse.ArgumentParser(description='Renders spherical views of given 3D models in *.obj, *.ply or *.gltf format by rotating a camera around it.')
     p.add_argument('--mesh_fpath', type=str, required=True, help='File path to either a single 3D model or a directory containing 3D models.')
-    p.add_argument('--config', type=str, required=True, help='Path to YAML config file for dataset.')
+    p.add_argument('--config', type=str, required=True, help='Path to JSON config file for dataset.')
 
     argv = sys.argv
     argv = sys.argv[sys.argv.index("--") + 1:]
