@@ -61,11 +61,11 @@ class BlenderInterface():
             # shadows
             bpy.context.scene.eevee.use_shadows = True
             # ao
-            bpy.context.scene.eevee.use_raytracing = True
+            bpy.context.scene.eevee.use_raytracing = ao['enable']
             bpy.context.scene.eevee.ray_tracing_method = 'SCREEN'
             bpy.context.scene.eevee.ray_tracing_options.resolution_scale = '1'
             bpy.context.scene.eevee.ray_tracing_options.use_denoise = True
-            bpy.context.scene.eevee.use_fast_gi = True
+            bpy.context.scene.eevee.use_fast_gi = ao['enable']
             bpy.context.scene.eevee.fast_gi_method = 'AMBIENT_OCCLUSION_ONLY'
             bpy.context.scene.eevee.fast_gi_resolution = '1'
         else:
