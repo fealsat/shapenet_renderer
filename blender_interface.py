@@ -52,14 +52,32 @@ class BlenderInterface():
 
         # Rendering
         rendering = self.config['rendering']
-        bpy.context.scene.render.engine = 'BLENDER_EEVEE'
-        bpy.context.scene.eevee.shadow_cascade_size = rendering['shadow']['cascade_size']
-        bpy.context.scene.eevee.use_soft_shadows = rendering['shadow']['use_soft_shadows']
         ao = rendering['ao']
-        bpy.context.scene.eevee.use_gtao = ao['enable']
-        bpy.context.scene.eevee.gtao_distance = ao['distance']
-        bpy.context.scene.eevee.use_gtao_bent_normals = ao['use_bent_normals']
-        bpy.context.scene.eevee.use_gtao_bounce = ao['use_bounce']
+        # Get version of Blender and adjust API
+        version = bpy.app.version
+        v_id = version[0] * 100 + version[1] * 10 + version[2]
+        if v_id > 420:  # in Blender version 4.2 the API changed
+            bpy.context.scene.render.engine = 'BLENDER_EEVEE_NEXT'
+            # shadows
+            bpy.context.scene.eevee.use_shadows = True
+            # ao
+            bpy.context.scene.eevee.use_raytracing = True
+            bpy.context.scene.eevee.ray_tracing_method = 'SCREEN'
+            bpy.context.scene.eevee.ray_tracing_options.resolution_scale = '1'
+            bpy.context.scene.eevee.ray_tracing_options.use_denoise = True
+            bpy.context.scene.eevee.use_fast_gi = True
+            bpy.context.scene.eevee.fast_gi_method = 'AMBIENT_OCCLUSION_ONLY'
+            bpy.context.scene.eevee.fast_gi_resolution = '1'
+        else:
+            bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+            # shadows
+            bpy.context.scene.eevee.shadow_cascade_size = rendering['shadow']['cascade_size']
+            bpy.context.scene.eevee.use_soft_shadows = rendering['shadow']['use_soft_shadows']
+            # ao
+            bpy.context.scene.eevee.use_gtao = ao['enable']
+            bpy.context.scene.eevee.gtao_distance = ao['distance']
+            bpy.context.scene.eevee.use_gtao_bent_normals = ao['use_bent_normals']
+            bpy.context.scene.eevee.use_gtao_bounce = ao['use_bounce']
         bpy.context.scene.view_settings.view_transform = rendering['color_management']['view_transform']
         bpy.context.scene.view_settings.look = rendering['color_management']['look']
 
@@ -79,11 +97,15 @@ class BlenderInterface():
 
         sun_light.data.energy = sun_lighting['energy'] if lighting['enable'] else 0.0
         sun_light.data.use_shadow = sun_lighting['use_shadow']
-        sun_light.data.use_contact_shadow = sun_lighting['use_shadow']
-        sun_light.data.contact_shadow_distance = sun_lighting['contact_shadow']['distance']
-        sun_light.data.contact_shadow_thickness = sun_lighting['contact_shadow']['thickness']
-        sun_light.data.shadow_cascade_count = sun_lighting['cascade_count']
-        sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
+        # Get version of Blender and adjust API
+        version = bpy.app.version
+        v_id = version[0] * 100 + version[1] * 10 + version[2]
+        if v_id < 420:  # since Blender 4.2 the API became simpler
+            sun_light.data.use_contact_shadow = sun_lighting['use_shadow']
+            sun_light.data.contact_shadow_distance = sun_lighting['contact_shadow']['distance']
+            sun_light.data.contact_shadow_thickness = sun_lighting['contact_shadow']['thickness']
+            sun_light.data.shadow_cascade_count = sun_lighting['cascade_count']
+            sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
 
         bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = lighting['ambient_light']
 

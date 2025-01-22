@@ -43,8 +43,8 @@
       "use_bent_normals": false
     },
     "color_management": {
-      "view_transform": "Filmic",
-      "look": "High Contrast"
+      "view_transform": "AgX",
+      "look": "AgX - Base Contrast"
     }
   }
 }
