@@ -8,21 +8,24 @@ def collect_files(directory, extensions):
     """Collects all files with specified extensions in a given directory."""
     files = []
     for f in os.listdir(directory):
-        if f in extensions:
+        if f.endswith(tuple(extensions)):
             files.append(os.path.join(directory, f))
     return files
 
 
 def distribute_files(files, num_jobs):
-    job_lists = [[] for _ in range(num_jobs)]
+    job_lists = []
+    #job_lists = [[] for _ in range(num_jobs)]
     total_files = len(files)
     batch_size = total_files // num_jobs
     batch_rem = total_files % num_jobs
     # distribute the files to the number of jobs
     for job in range(num_jobs):
-        job_lists[job].append(files[batch_size * job:batch_size * (job + 1)])
+        print('from: {}, to: {}'.format(batch_size * job, batch_size * (job + 1)))
+        job_lists.append(files[batch_size * job:batch_size * (job + 1)])
     # add remainder of files to last job
-    job_lists[-1].append(files[batch_size * num_jobs:batch_size * num_jobs + batch_rem])
+    if batch_rem != 0:
+        job_lists[-1].append(files[batch_size * num_jobs:batch_size * num_jobs + batch_rem])
     return job_lists
 
 
@@ -35,12 +38,15 @@ def save_job_config(root_path, job_lists, output_json):
 
 def launch_blender_jobs(num_jobs, json_file, blender_script, config_file):
     """Launches Blender in headless mode with the specified script and job data."""
+    from sys import platform
+    blender = 'blender.exe' if platform == 'win32' else 'blender'
     for job_id in range(num_jobs):
         command = [
             "blender", "--background", "--python", blender_script, "--",
-            "--batch_file", json_file, "--batch_id", job_id, "--config", config_file
+            "--batch_file", json_file, "--batch_id", str(job_id), "--config", config_file
         ]
-        subprocess.Popen(command)
+        print(command)
+        subprocess.Popen(command, shell=True)
         print(f"Started job {job_id} with command: {' '.join(command)}")
 
 
@@ -55,17 +61,17 @@ def main():
     args = parser.parse_args()
 
     extensions = ["gltf", "obj", "ply"]
-    files = collect_files(args.directory, extensions)
+    files = collect_files(args.d, extensions)
 
     if not files:
         print("No valid 3D model files found. Exiting.")
         return
 
     job_lists = distribute_files(files, args.num_jobs)
-    save_job_config(args.directory, job_lists, args.output_json)
+    save_job_config(args.d, job_lists, args.output_json)
 
     print(f"Job configuration saved to {args.output_json}")
-    launch_blender_jobs(args.num_jobs, args.output_json, args.blender_script)
+    launch_blender_jobs(args.num_jobs, args.output_json, args.script, args.config)
 
 
 if __name__ == "__main__":
