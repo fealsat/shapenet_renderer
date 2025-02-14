@@ -1,5 +1,3 @@
-import util
-import blender_interface
 
 import argparse
 import os
@@ -7,6 +5,9 @@ import sys
 import json
 
 sys.path.append(os.path.dirname(__file__))
+
+import util
+import blender_interface
 
 
 def main():
@@ -18,6 +19,8 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:]
     opt = p.parse_args(argv)
 
+    print(opt)
+
     # open the batch file
     with open(opt.batch_file, 'r') as f:
         batch = json.load(f)
@@ -26,6 +29,7 @@ def main():
     fp = batch['root_path']
 
     # collect all the files to process
+    print(batch['files'][opt.batch_id])
     instances = [f for f in batch['files'][opt.batch_id] if util.is_allowed_type(f)]
     if len(instances) == 0:
         raise ValueError('Input must either be a directory containing 3D model files or a path to a single 3D model file.')
