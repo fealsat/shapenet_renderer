@@ -23,10 +23,11 @@
       "cascade_count": 4,
       "cascade_max_distance": 500
     },
-    "ambient_light": [0.2, 0.2, 0.2, 1.0]
+    "ambient_light": [0.2, 0.2, 0.2, 1.0],
+    "background_light": [1.0, 0.0, 0.0, 1.0],
   },
   "rendering": {
-    "use_exr": false,
+    "use_exr": true,
     "camera": {
       "width": 256,
       "height": 256,
