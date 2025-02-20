@@ -24,7 +24,7 @@
       "cascade_max_distance": 500
     },
     "ambient_light": [0.2, 0.2, 0.2, 1.0],
-    "background_light": [1.0, 0.0, 0.0, 1.0],
+    "background_color": [1.0, 0.0, 0.0, 1.0]
   },
   "rendering": {
     "use_exr": true,

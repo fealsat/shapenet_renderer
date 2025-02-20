@@ -25,9 +25,9 @@ def main():
     if os.path.isdir(opt.mesh_fpath):
         instances = [fp for fp in os.listdir(opt.mesh_fpath) if util.is_allowed_type(fp)]
     else:
-        if util.is_allowed_type(p.mesh_fpath):
-            instances.append(p.mesh_fpath)
-            fp = os.path.dirname(p.mesh_fpath)
+        if util.is_allowed_type(opt.mesh_fpath):
+            instances.append(opt.mesh_fpath)
+            fp = os.path.dirname(opt.mesh_fpath)
     if len(instances) == 0:
         raise ValueError('Input must either be a directory containing 3D model files or a path to a single 3D model file.')
 
