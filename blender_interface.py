@@ -97,14 +97,14 @@ class BlenderInterface():
 
         ambient_shader = nodes.new('ShaderNodeBackground')
         ambient_shader.inputs[0].default_value = ambient_color
-        
+
         weight = nodes.new('ShaderNodeLightPath')
 
         world.node_tree.links.new(weight.outputs['Is Camera Ray'], mix_shader.inputs[0])
         world.node_tree.links.new(ambient_shader.outputs[0], mix_shader.inputs[1])
         world.node_tree.links.new(background_shader.outputs[0], mix_shader.inputs[2])
         world.node_tree.links.new(nodes['World Output'].inputs[0], mix_shader.outputs[0])
-    
+
     # Setup lighting
     def setup_lighting(self):
         bpy.ops.object.light_add(type='SUN', location=(0, 0, 0))
@@ -130,7 +130,7 @@ class BlenderInterface():
             sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
 
         # bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = lighting['ambient_light']
-        setup_world_props(lighting['ambient_light'], lighting['background_color'])
+        self.setup_world_props(lighting['ambient_light'], lighting['background_color'])
 
         bpy.ops.object.select_all(action='DESELECT')
 
