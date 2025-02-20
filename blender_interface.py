@@ -84,7 +84,7 @@ class BlenderInterface():
         return camera
 
     # Setup the world properties
-    def setup_world_props(ambient_color, bg_color):
+    def setup_world_props(self, ambient_color, bg_color):
         world = bpy.context.scene.world
 
         world.use_nodes = True
