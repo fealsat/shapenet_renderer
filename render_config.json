@@ -1,11 +1,12 @@
 {
   "file_path": "",
   "out_dir": "./out_dir",
-  "num_observations": 32,
+  "num_observations": 4,
   "mode": "test",
   "object": {
-    "scale": 100,
-    "center_mode": "mean"
+    "scale": 1,
+    "center_mode": "mean",
+    "normalize": false
   },
   "lighting": {
     "enable": true,

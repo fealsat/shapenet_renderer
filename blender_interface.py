@@ -17,6 +17,7 @@ class BlenderInterface():
         self.obj = None
         self.scale = config['object']['scale']
         self.center_mode = config['object']['center_mode']
+        self.normalize = config['object']['normalize']
         # Output directory
         self.out_dir = config['out_dir']
 
@@ -165,20 +166,30 @@ class BlenderInterface():
         obj = bpy.context.view_layer.objects.active
         obj.name = os.path.basename(fpath)
 
-        # Center the object at the origin
-        v_coords = [obj.matrix_world @ v.co for v in obj.data.vertices]
-        min_x = min(co.x for co in v_coords)
-        min_y = min(co.y for co in v_coords)
-        if self.center_mode == 'min':
-            min_z = min(co.z for co in v_coords)  # min / max, center vertically
-        else:
-            min_z = sum(co.z for co in v_coords) / len(v_coords)  # vertical center of mass
+        # Apply the world transformation
+        v_mat = np.asarray(obj.matrix_world).T
+        v_coords = (np.hstack((np.asarray([v.co for v in obj.data.vertices]),
+                               np.ones((len(obj.data.vertices), 1)))) @ v_mat)[:, :3]
 
-        offset = np.array([min_x, min_y, min_z]) + np.array(obj.dimensions) / 2
-        offset[2] = min_z
-        bpy.context.scene.cursor.location = offset
-        bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
-        obj.location = (0, 0, 0)
+        # Check whether to normalize the object w.r.t longest axis
+        if self.normalize:
+            s = self.scale / np.abs(v_coords.max(axis=0) - v_coords.min(axis=0)).max()
+            print(f'scale: {s}')
+            bpy.ops.transform.resize(value=(s, s, s))
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+        # Center the object at the origin
+        if self.center_mode != 'none':
+            v_coords = (np.hstack((np.asarray([v.co for v in obj.data.vertices]),
+                                   np.ones((len(obj.data.vertices), 1)))) @ v_mat)[:, :3]
+            v_centroid = v_coords.mean(axis=0)
+            v_min, v_max = v_coords.min(axis=0), v_coords.max(axis=0)
+
+            offset = v_centroid
+            offset[2] = v_min[2] if self.center_mode == 'min' else v_centroid[2]
+            bpy.context.scene.cursor.location = offset
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+            obj.location = (0, 0, 0)
 
         # Add Edge Split modifier
         edge_split = obj.modifiers.new('EdgeSplit', type='EDGE_SPLIT')
