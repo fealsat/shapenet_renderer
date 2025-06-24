@@ -11,6 +11,12 @@
   "lighting": {
     "enable": true,
     "is_random": true,
+    "ibl": {
+      "enable": false,
+      "directory": "./hdris",
+      "random_rotation": false,
+      "rotation_euler_z": 0
+    },
     "sun_light": {
       "rotation_euler_y": 0,
       "rotation_euler_z": 0,
@@ -28,7 +34,7 @@
     "background_color": [1.0, 0.0, 0.0, 1.0]
   },
   "rendering": {
-    "use_exr": true,
+    "use_exr": false,
     "camera": {
       "width": 256,
       "height": 256,

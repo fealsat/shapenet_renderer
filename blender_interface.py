@@ -1,4 +1,7 @@
+import json
 import os
+import random
+
 import util
 import bpy
 import numpy as np
@@ -61,6 +64,8 @@ class BlenderInterface():
             bpy.context.scene.render.engine = 'BLENDER_EEVEE_NEXT'
             # shadows
             bpy.context.scene.eevee.use_shadows = True
+            # if HDRI-based lighting, enable shadows there as well
+
             # ao
             bpy.context.scene.eevee.use_raytracing = ao['enable']
             bpy.context.scene.eevee.ray_tracing_method = 'SCREEN'
@@ -85,25 +90,57 @@ class BlenderInterface():
         return camera
 
     # Setup the world properties
-    def setup_world_props(self, ambient_color, bg_color):
+    def setup_world_props(self, ambient_color, bg_color, ibl_config):
         world = bpy.context.scene.world
 
         world.use_nodes = True
         nodes = world.node_tree.nodes
 
-        mix_shader = nodes.new('ShaderNodeMixShader')
+        # parse the config
+        use_ibl = ibl_config['enable']
+        ibl_directory = ibl_config['directory']
+        random_rotation = ibl_config['random_rotation']
+        rotation_euler_z = ibl_config['rotation_euler_z']
 
+        # TODO continue here
         background_shader = nodes.new('ShaderNodeBackground')
-        background_shader.inputs[0].default_value = bg_color
+        if use_ibl:
+            with open(os.path.join(ibl_directory, 'config.json'), 'r') as f:
+                hdri_config = json.load(f)
+            # randomly select a sky
+            hdri_bg = random.choice(hdri_config)
+
+            # set up the shader tree
+            background_img = bpy.data.images.load(os.path.join(ibl_directory, hdri_bg['name']))
+            background_texture = nodes.new('ShaderNodeTexEnvironment')
+            background_mapping = nodes.new('ShaderNodeMapping')
+            background_coord = nodes.new("ShaderNodeTexCoord")
+
+            background_img.colorspace_settings.name = 'Non-Color'
+            background_texture.image = background_img
+            background_mapping.inputs['Rotation'].default_value[2] = random.uniform(0, np.pi * 2) if random_rotation else np.radians(rotation_euler_z)
+
+            world.node_tree.links.new(background_coord.outputs['Generated'], background_mapping.inputs['Vector'])
+            world.node_tree.links.new(background_mapping.outputs['Vector'], background_texture.inputs['Vector'])
+            world.node_tree.links.new(background_texture.outputs['Color'], background_shader.inputs['Color'])
+            world.node_tree.links.new(background_shader.outputs['Background'], nodes['World Output'].inputs['Surface'])
+
+            # enable shadows
+            world.use_sun_shadow = True
+            world.sun_threshold = hdri_bg['threshold']
+            world.sun_angle = hdri_bg['angle']
+        else:
+            background_shader.inputs[0].default_value = ambient_color
 
         ambient_shader = nodes.new('ShaderNodeBackground')
-        ambient_shader.inputs[0].default_value = ambient_color
+        ambient_shader.inputs[0].default_value = bg_color
 
+        mix_shader = nodes.new('ShaderNodeMixShader')
         weight = nodes.new('ShaderNodeLightPath')
 
         world.node_tree.links.new(weight.outputs['Is Camera Ray'], mix_shader.inputs[0])
-        world.node_tree.links.new(ambient_shader.outputs[0], mix_shader.inputs[1])
-        world.node_tree.links.new(background_shader.outputs[0], mix_shader.inputs[2])
+        world.node_tree.links.new(ambient_shader.outputs[0], mix_shader.inputs[2])
+        world.node_tree.links.new(background_shader.outputs[0], mix_shader.inputs[1])
         world.node_tree.links.new(nodes['World Output'].inputs[0], mix_shader.outputs[0])
 
     # Setup lighting
@@ -118,7 +155,7 @@ class BlenderInterface():
             sun_light.rotation_euler[1] = np.random.uniform(-np.pi / 3, np.pi / 3) if is_random else sun_lighting['rotation_euler_y']
             sun_light.rotation_euler[2] = np.random.uniform(0, 2 * np.pi) if is_random else sun_lighting['rotation_euler_z']
 
-        sun_light.data.energy = sun_lighting['energy'] if lighting['enable'] else 0.0
+        sun_light.data.energy = sun_lighting['energy'] if (lighting['enable'] and not lighting['ibl']['enable']) else 0.0
         sun_light.data.use_shadow = sun_lighting['use_shadow']
         # Get version of Blender and adjust API
         version = bpy.app.version
@@ -131,7 +168,9 @@ class BlenderInterface():
             sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
 
         # bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = lighting['ambient_light']
-        self.setup_world_props(lighting['ambient_light'], lighting['background_color'])
+        self.setup_world_props(lighting['ambient_light'],
+                               lighting['background_color'],
+                               ibl_config=lighting['ibl'])
 
         bpy.ops.object.select_all(action='DESELECT')
 
