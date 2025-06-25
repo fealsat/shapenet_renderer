@@ -215,7 +215,7 @@ def load_config(config_path):
 
 
 def is_allowed_type(fp):
-    return any(ext in fp for ext in ['.gltf', '.obj', '.ply'])
+    return any(ext in fp for ext in ['.gltf', '.obj', '.ply', '.glb'])
 
 
 def sample_archimedean_spiral(sphere_radius, num_steps=250):

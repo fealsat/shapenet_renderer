@@ -195,7 +195,7 @@ class BlenderInterface():
             bpy.ops.wm.obj_import(filepath=str(fpath))
         elif ext == '.ply':
             bpy.ops.wm.ply_import(filepath=str(fpath))
-        elif ext == '.gltf':
+        elif ext == '.gltf' or ext == '.glb':
             bpy.ops.import_scene.gltf(filepath=fpath, loglevel=50, import_shading='SMOOTH')
         # optionally scale the object
         bpy.ops.transform.resize(value=(self.scale, self.scale, self.scale))
@@ -299,11 +299,11 @@ class BlenderInterface():
             if use_exr:
                 # render EXR
                 bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
-                bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'exr')
+                bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'exr')
                 bpy.ops.render.render(write_still=True)
             # render PNG
             bpy.context.scene.render.image_settings.file_format = 'PNG'
-            bpy.context.scene.render.filepath = '{}.{}'.format(file_path, 'png')
+            bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'png')
             bpy.ops.render.render(write_still=True)
 
             if write_cam_params:
