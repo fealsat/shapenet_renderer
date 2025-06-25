@@ -6,14 +6,15 @@
   "object": {
     "scale": 1,
     "center_mode": "mean",
-    "normalize": false
+    "normalize": true
   },
   "lighting": {
     "enable": true,
     "is_random": true,
     "ibl": {
-      "enable": false,
+      "enable": true,
       "directory": "./hdris",
+      "file_path": "",
       "random_rotation": false,
       "rotation_euler_z": 0
     },
@@ -31,7 +32,7 @@
       "cascade_max_distance": 500
     },
     "ambient_light": [0.2, 0.2, 0.2, 1.0],
-    "background_color": [1.0, 0.0, 0.0, 1.0]
+    "background_color": [0.2, 0.2, 0.4, 1.0]
   },
   "rendering": {
     "use_exr": false,
@@ -49,6 +50,10 @@
       "distance": 1.0,
       "use_bounce": false,
       "use_bent_normals": false
+    },
+    "fog": {
+      "enable": true,
+      "preset": "high"
     },
     "color_management": {
       "view_transform": "AgX",

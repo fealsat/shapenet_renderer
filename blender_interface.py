@@ -52,7 +52,7 @@ class BlenderInterface():
         bpy.context.scene.render.resolution_x = cam['width']
         bpy.context.scene.render.resolution_y = cam['height']
         bpy.context.scene.render.resolution_percentage = 100
-        camera.data.sensor_height = camera.data.sensor_width # Square sensor
+        camera.data.sensor_height = camera.data.sensor_width  # Square sensor
 
         # Rendering
         rendering = self.config['rendering']
@@ -90,15 +90,19 @@ class BlenderInterface():
         return camera
 
     # Setup the world properties
-    def setup_world_props(self, ambient_color, bg_color, ibl_config):
-        world = bpy.context.scene.world
+    def setup_world_props(self):
+        ibl_config = self.config['lighting']['ibl']
+        ambient_color = self.config['lighting']['ambient_light']
+        bg_color = self.config['lighting']['background_color']
 
+        world = bpy.context.scene.world
         world.use_nodes = True
         nodes = world.node_tree.nodes
 
         # parse the config
         use_ibl = ibl_config['enable']
         ibl_directory = ibl_config['directory']
+        ibl_file = ibl_config['file_path']
         random_rotation = ibl_config['random_rotation']
         rotation_euler_z = ibl_config['rotation_euler_z']
 
@@ -108,8 +112,18 @@ class BlenderInterface():
             with open(os.path.join(ibl_directory, 'config.json'), 'r') as f:
                 hdri_config = json.load(f)
             # randomly select a sky
-            hdri_bg = random.choice(hdri_config)
+            if ibl_file == "":
+                hdri_bg = random.choice(hdri_config)
+            else:
+                def pick_by_name(k, arr):
+                    for a in arr:
+                        if a['name'] == k:
+                            return a
+                    raise ValueError(f'Could not find {k} in {arr}')
 
+                hdri_bg = pick_by_name(ibl_file, hdri_config)
+
+            print(f'Using IBL with environment {hdri_bg["name"]}')
             # set up the shader tree
             background_img = bpy.data.images.load(os.path.join(ibl_directory, hdri_bg['name']))
             background_texture = nodes.new('ShaderNodeTexEnvironment')
@@ -118,7 +132,9 @@ class BlenderInterface():
 
             background_img.colorspace_settings.name = 'Non-Color'
             background_texture.image = background_img
-            background_mapping.inputs['Rotation'].default_value[2] = random.uniform(0, np.pi * 2) if random_rotation else np.radians(rotation_euler_z)
+            background_mapping.inputs['Rotation'].default_value[2] = random.uniform(0,
+                                                                                    np.pi * 2) if random_rotation else np.radians(
+                rotation_euler_z)
 
             world.node_tree.links.new(background_coord.outputs['Generated'], background_mapping.inputs['Vector'])
             world.node_tree.links.new(background_mapping.outputs['Vector'], background_texture.inputs['Vector'])
@@ -152,10 +168,13 @@ class BlenderInterface():
         sun_lighting = lighting['sun_light']
         if lighting['enable']:
             is_random = lighting['is_random']
-            sun_light.rotation_euler[1] = np.random.uniform(-np.pi / 3, np.pi / 3) if is_random else sun_lighting['rotation_euler_y']
-            sun_light.rotation_euler[2] = np.random.uniform(0, 2 * np.pi) if is_random else sun_lighting['rotation_euler_z']
+            sun_light.rotation_euler[1] = np.random.uniform(-np.pi / 3, np.pi / 3) if is_random else sun_lighting[
+                'rotation_euler_y']
+            sun_light.rotation_euler[2] = np.random.uniform(0, 2 * np.pi) if is_random else sun_lighting[
+                'rotation_euler_z']
 
-        sun_light.data.energy = sun_lighting['energy'] if (lighting['enable'] and not lighting['ibl']['enable']) else 0.0
+        sun_light.data.energy = sun_lighting['energy'] if (
+                    lighting['enable'] and not lighting['ibl']['enable']) else 0.0
         sun_light.data.use_shadow = sun_lighting['use_shadow']
         # Get version of Blender and adjust API
         version = bpy.app.version
@@ -168,13 +187,41 @@ class BlenderInterface():
             sun_light.data.shadow_cascade_max_distance = sun_lighting['cascade_max_distance']
 
         # bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = lighting['ambient_light']
-        self.setup_world_props(lighting['ambient_light'],
-                               lighting['background_color'],
-                               ibl_config=lighting['ibl'])
-
+        self.setup_world_props()
         bpy.ops.object.select_all(action='DESELECT')
 
         return sun_light
+
+    def setup_fog(self):
+        fog_config = self.config['rendering']['fog']
+        lighting = self.config['lighting']
+        if not fog_config['enable']:
+            return
+
+        # fog gamma values
+        fog_gamma = {'low': 1.2, 'medium': 1.1, 'high': 1.0}
+
+        # enable world fog
+        bpy.context.scene.view_layers["ViewLayer"].use_pass_mist = True
+        bpy.context.scene.world.mist_settings.start = 0.01
+        # we assume a sphere that is slightly larger than the camera to avoid fog issues
+        bpy.context.scene.world.mist_settings.depth = self.fit_to_view() * fog_gamma[fog_config['preset']]
+
+        # enable compositing
+        scene = bpy.context.scene
+        scene.use_nodes = True
+        compositor = scene.node_tree.nodes
+        compositor_gamma = compositor.new('CompositorNodeGamma')
+        compositor_mix = compositor.new('CompositorNodeMixRGB')
+
+        compositor_gamma.inputs[1].default_value = 1.0#fog_gamma[fog_config['preset']]
+        compositor_mix.blend_type = 'MIX'
+        compositor_mix.inputs[2].default_value = lighting['background_color']
+
+        scene.node_tree.links.new(compositor['Render Layers'].outputs['Mist'], compositor_gamma.inputs[0])
+        scene.node_tree.links.new(compositor['Render Layers'].outputs['Image'], compositor_mix.inputs[1])
+        scene.node_tree.links.new(compositor_gamma.outputs[0], compositor_mix.inputs[0])
+        scene.node_tree.links.new(compositor_mix.outputs[0], compositor['Composite'].inputs['Image'])
 
     def fit_to_view(self):
         intrin = self.config['rendering']['camera']
@@ -233,7 +280,7 @@ class BlenderInterface():
         # Add Edge Split modifier
         edge_split = obj.modifiers.new('EdgeSplit', type='EDGE_SPLIT')
 
-        util.dump(obj)
+        # util.dump(obj)
 
         # Adjust materials
         materials = obj.data.materials
@@ -246,11 +293,13 @@ class BlenderInterface():
                         n['Roughness'] = 1.0
                     # Disable texture interpolation
                     if 'Image Texture' in n.name:
-                        n.interpolation = 'Closest' 
-            # Disable alpha blending
+                        n.interpolation = 'Closest'
+                        # Disable alpha blending
             m.blend_method = 'OPAQUE'
 
         self.obj = obj
+
+        self.setup_fog()
 
         bpy.ops.object.select_all(action='DESELECT')
 
@@ -277,11 +326,11 @@ class BlenderInterface():
             K = util.get_calibration_matrix_K_from_blender(self.camera.data)
             im_w = bpy.context.scene.render.resolution_x
             im_h = bpy.context.scene.render.resolution_y
-            with open(os.path.join(obj_dir, 'intrinsics.txt'),'w') as intrinsics_file:
-                intrinsics_file.write('%f %f %f 0.\n'%(K[0][0], K[0][2], K[1][2]))
+            with open(os.path.join(obj_dir, 'intrinsics.txt'), 'w') as intrinsics_file:
+                intrinsics_file.write('%f %f %f 0.\n' % (K[0][0], K[0][2], K[1][2]))
                 intrinsics_file.write('0. 0. 0.\n')
                 intrinsics_file.write('1.\n')
-                intrinsics_file.write('%d %d\n'%(im_h, im_w))
+                intrinsics_file.write('%d %d\n' % (im_h, im_w))
         else:
             img_dir = self.out_dir
             util.cond_mkdir(img_dir)
@@ -293,7 +342,7 @@ class BlenderInterface():
         for i, pos in enumerate(positions):
             self.camera.location = pos
             self.camera.keyframe_insert(data_path="location", frame=i)
-            file_path = os.path.join(img_dir, '%06d'%i)
+            file_path = os.path.join(img_dir, '%06d' % i)
             # set current frame
             bpy.context.scene.frame_set(i)
             if use_exr:
@@ -310,7 +359,7 @@ class BlenderInterface():
                 # Write out camera pose
                 RT = util.get_world2cam_from_blender_cam(self.camera)
                 cam2world = RT.inverted()
-                with open(os.path.join(pose_dir, '%06d.txt'%i),'w') as pose_file:
+                with open(os.path.join(pose_dir, '%06d.txt' % i), 'w') as pose_file:
                     matrix_flat = []
                     for j in range(4):
                         for k in range(4):
