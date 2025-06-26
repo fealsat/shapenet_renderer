@@ -199,7 +199,7 @@ class BlenderInterface():
             return
 
         # fog gamma values
-        fog_gamma = {'low': 1.2, 'medium': 1.1, 'high': 1.0}
+        fog_gamma = {'low': 1.3, 'medium': 1.2, 'high': 1.1}
 
         # enable world fog
         bpy.context.scene.view_layers["ViewLayer"].use_pass_mist = True
@@ -268,11 +268,12 @@ class BlenderInterface():
         if self.center_mode != 'none':
             v_coords = (np.hstack((np.asarray([v.co for v in obj.data.vertices]),
                                    np.ones((len(obj.data.vertices), 1)))) @ v_mat)[:, :3]
-            v_centroid = v_coords.mean(axis=0)
+            # v_centroid = v_coords.mean(axis=0)
+            v_centroid = v_coords.min(axis=0) + 0.5 * (v_coords.max(axis=0) - v_coords.min(axis=0))
             v_min, v_max = v_coords.min(axis=0), v_coords.max(axis=0)
 
             offset = v_centroid
-            offset[2] = v_min[2] if self.center_mode == 'min' else v_centroid[2]
+            offset[2] = v_min[2] if self.center_mode == 'min' else v_coords.mean(axis=0)[2]
             bpy.context.scene.cursor.location = offset
             bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
             obj.location = (0, 0, 0)
