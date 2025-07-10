@@ -5,8 +5,6 @@ work_dir="$(pwd)/hdris"
 # Load JSON from file
 json="$(cat $work_dir/config.json)"
 
-echo $json
-
 # Get the length of the array
 length="$(printf '%d' $(echo "$json" | jq '. | length'))"
 user_agent=$"ShapeNetRenderer/1.0"
