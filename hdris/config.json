@@ -1,0 +1,32 @@
+[
+  {
+    "name": "aristea_wreck_puresky_2k.hdr",
+    "threshold": 3.0,
+    "angle": 0.1222
+  },
+  {
+    "name": "drackenstein_quarry_puresky_2k.hdr",
+    "threshold": 5.0,
+    "angle": 0.1222
+  },
+  {
+    "name": "kloofendal_48d_partly_cloudy_puresky_2k.hdr",
+    "threshold": 10.0,
+    "angle": 0.0262
+  },
+  {
+    "name": "lonely_road_afternoon_puresky_2k.hdr",
+    "threshold": 4.0,
+    "angle": 0.0175
+  },
+  {
+    "name": "mud_road_puresky_2k.hdr",
+    "threshold": 10.0,
+    "angle": 0.526
+  },
+  {
+    "name": "table_mountain_2_puresky_2k.hdr",
+    "threshold": 5.0,
+    "angle": 0.0175
+  }
+]
