@@ -36,6 +36,8 @@
   },
   "rendering": {
     "use_exr": false,
+    "use_mvs": false,
+    "mvs": [[-0.1, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]],
     "camera": {
       "width": 256,
       "height": 256,
@@ -53,7 +55,8 @@
     },
     "fog": {
       "enable": true,
-      "preset": "high"
+      "preset": "high",
+      "gamma": [1.2, 1.1, 1.0]
     },
     "color_management": {
       "view_transform": "AgX",
