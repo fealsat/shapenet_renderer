@@ -34,25 +34,35 @@ class BlenderInterface():
     def setup_camera_rendering(self):
         cam = self.config['rendering']['camera']
 
-        def fit_to_view(im_w, im_h, fov, dims):
-            fov_y = 2.0 * np.arctan(np.tan(fov / 2) / (im_w / im_h))
-            r = np.linalg.norm(dims) * 0.5 * 1.1
-            return r / min(np.tan(fov / 2), np.tan(fov_y / 2))
+        bpy.ops.object.empty_add(type='ARROWS',
+                                 align='WORLD',
+                                 location=(0, 0, 0),
+                                 scale=(1, 1, 1))
+        root = bpy.context.selected_objects[0]
+        camera = {'root': root, 'cams': []}
 
         bpy.ops.object.empty_add(type='ARROWS', location=(0, 0, 0))
         empty = bpy.context.view_layer.objects.active
-
-        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
-        bpy.context.scene.camera = bpy.data.objects["Camera"]
-        camera = bpy.context.view_layer.objects.active
-        camera_const = camera.constraints.new(type='TRACK_TO')
+        camera_const = root.constraints.new(type='TRACK_TO')
         camera_const.target = empty
-        camera.data.lens_unit = 'FOV'
-        camera.data.angle = cam['fov']
-        bpy.context.scene.render.resolution_x = cam['width']
-        bpy.context.scene.render.resolution_y = cam['height']
-        bpy.context.scene.render.resolution_percentage = 100
-        camera.data.sensor_height = camera.data.sensor_width  # Square sensor
+
+        cam_opts = [(0.0, 0.0, 0.0)] if not self.config['rendering']['use_mvs'] else [tuple(m) for m in self.config['rendering']['mvs']]
+        for opt in cam_opts:
+            bpy.ops.object.camera_add(enter_editmode=False,
+                                      align='VIEW',
+                                      location=opt,
+                                      rotation=(0, 0, 0),
+                                      scale=(1, 1, 1))
+            c = bpy.context.selected_objects[0]
+            c.parent = root
+            camera['cams'].append(c)
+
+            c.data.lens_unit = 'FOV'
+            c.data.angle = cam['fov']
+            bpy.context.scene.render.resolution_x = cam['width']
+            bpy.context.scene.render.resolution_y = cam['height']
+            bpy.context.scene.render.resolution_percentage = 100
+            c.data.sensor_height = c.data.sensor_width  # Square sensor
 
         # Rendering
         rendering = self.config['rendering']
@@ -324,7 +334,7 @@ class BlenderInterface():
             util.cond_mkdir(img_dir)
             util.cond_mkdir(pose_dir)
 
-            K = util.get_calibration_matrix_K_from_blender(self.camera.data)
+            K = util.get_calibration_matrix_K_from_blender(self.camera['cams'][0].data)
             im_w = bpy.context.scene.render.resolution_x
             im_h = bpy.context.scene.render.resolution_y
             with open(os.path.join(obj_dir, 'intrinsics.txt'), 'w') as intrinsics_file:
@@ -341,30 +351,33 @@ class BlenderInterface():
 
         bpy.context.scene.frame_set(0)
         for i, pos in enumerate(positions):
-            self.camera.location = pos
-            self.camera.keyframe_insert(data_path="location", frame=i)
-            file_path = os.path.join(img_dir, '%06d' % i)
-            # set current frame
-            bpy.context.scene.frame_set(i)
-            if use_exr:
-                # render EXR
-                bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
-                bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'exr')
+            self.camera['root'].location = pos
+            self.camera['root'].keyframe_insert(data_path="location", frame=i)
+            # Now we need to render as many times as we have cameras
+            for idx, camera in enumerate(self.camera['cams']):
+                bpy.context.scene.camera = camera
+                file_path = os.path.join(img_dir, f'{i:06d}_{idx}')
+                # set current frame
+                bpy.context.scene.frame_set(i)
+                if use_exr:
+                    # render EXR
+                    bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR_MULTILAYER'
+                    bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'exr')
+                    bpy.ops.render.render(write_still=True)
+                # render PNG
+                bpy.context.scene.render.image_settings.file_format = 'PNG'
+                bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'png')
                 bpy.ops.render.render(write_still=True)
-            # render PNG
-            bpy.context.scene.render.image_settings.file_format = 'PNG'
-            bpy.context.scene.render.filepath = '{}.{}'.format(os.path.abspath(file_path), 'png')
-            bpy.ops.render.render(write_still=True)
 
-            if write_cam_params:
-                # Write out camera pose
-                RT = util.get_world2cam_from_blender_cam(self.camera)
-                cam2world = RT.inverted()
-                with open(os.path.join(pose_dir, '%06d.txt' % i), 'w') as pose_file:
-                    matrix_flat = []
-                    for j in range(4):
-                        for k in range(4):
-                            matrix_flat.append(cam2world[j][k])
-                    pose_file.write(' '.join(map(str, matrix_flat)) + '\n')
+                if write_cam_params:
+                    # Write out camera pose
+                    RT = util.get_world2cam_from_blender_cam(camera)
+                    cam2world = RT.inverted()
+                    with open(os.path.join(pose_dir, f'{i:06d}_{idx}.txt'), 'w') as pose_file:
+                        matrix_flat = []
+                        for j in range(4):
+                            for k in range(4):
+                                matrix_flat.append(cam2world[j][k])
+                        pose_file.write(' '.join(map(str, matrix_flat)) + '\n')
 
         bpy.data.objects.remove(self.obj)
