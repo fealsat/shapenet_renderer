@@ -25,6 +25,7 @@ class BlenderInterface():
         self.out_dir = config['out_dir']
 
         # Set up the camera & lighting
+        self.cam_offset = config['rendering']['distance_offset']
         self.camera = self.setup_camera_rendering()
         self.sun_light = self.setup_lighting()
 
@@ -213,7 +214,7 @@ class BlenderInterface():
 
         # enable world fog
         bpy.context.scene.view_layers["ViewLayer"].use_pass_mist = True
-        bpy.context.scene.world.mist_settings.start = 0.01
+        bpy.context.scene.world.mist_settings.start = 0.01 + self.cam_offset
         # we assume a sphere that is slightly larger than the camera to avoid fog issues
         bpy.context.scene.world.mist_settings.depth = self.fit_to_view() * fog_gamma[fog_config['preset']]
 
@@ -240,7 +241,7 @@ class BlenderInterface():
         im_h = intrin['height']
         dims = self.obj.dimensions
         fov_y = 2.0 * np.arctan(np.tan(fov / 2) / (im_w / im_h))
-        r = np.linalg.norm(dims) * 0.5 * 1.1
+        r = np.linalg.norm(dims) * 0.5 * 1.1 + self.cam_offset
         return r / min(np.tan(fov / 2), np.tan(fov_y / 2))
 
     def import_mesh(self, fpath):

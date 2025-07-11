@@ -43,6 +43,7 @@
       "height": 256,
       "fov": 0.785
     },
+    "distance_offset": 0.0,
     "shadow": {
       "cascade_size": "4096",
       "use_soft_shadows": true
