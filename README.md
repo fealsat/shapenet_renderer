@@ -1,8 +1,7 @@
 # ShapeNet Renderer
 
-This project renders spherical views of 3D models in `.obj`, `.ply`, or `.gltf` formats using Blender
-in [headless mode](https://docs.blender.org/manual/en/latest/advanced/command_line/render.html). It is based on Vincent
-Sitzmann's spherical renderer but updated for Blender 2.8+ and enhanced with several features and flexible configuration
+This project renders spherical views of 3D models in `.obj`, `.ply`, or `.gltf` formats using Blender in [headless mode](https://docs.blender.org/manual/en/latest/advanced/command_line/render.html).
+It is based on Vincent Sitzmann's spherical renderer but updated for Blender 2.8+ with significantly enhanced features and flexible configuration
 using a JSON file. Below are instructions to clone, install Blender, and run the script.
 
 ## Features
@@ -11,10 +10,13 @@ using a JSON file. Below are instructions to clone, install Blender, and run the
 - Random sampling or Archimedean spiral (based
   on [this code](https://github.com/vsitzmann/shapenet_renderer/blob/master/util.py#L205))
 - Automatic alignment and positioning of objects within the camera frame
-- Mono-, bi- and trinocular camera setups are supported with optional tangential offset
-- Extensive configuration to allow ambient, fixed or random sun lighting including optional shadows
-- Support for ambient occlusion to mimic indirect lighting
-- Support for image-based lighting using HDR / EXR images
+- Mono and multi view camera setups are supported with optional tangential offset
+- Extensive configuration to allow various lighting setups:
+  - Ambient, fixed or random sun lighting including optional shadows
+  - Support for ambient occlusion to quickly mimic indirect lighting
+  - Support for image-based lighting using HDR / EXR images with shadows
+- Presets for mist pass to simulate haze / fog
+- Export to EXR file to include color, depth, position, mask ground-truth data in floating-point format
 - Different view transforms to allow for better color management (can avoid overexposure of models)
 
 ## Usage
@@ -32,15 +34,21 @@ blender -b --python shapenet_spherical_renderer.py -- --mesh_fpath <your_model_p
 The script uses Blender for rendering. Follow the instructions below to install Blender on your system:
 Download Blender from the [Blender Download Page](https://www.blender.org/download/).
 
+## Examples
+In the ```examples``` folder you'll find scripts that show how to read and use the generated data. 
+
+- ```load_exr.py``` shows how to read the ground-truth data stored in a generated ```.exr``` file and use it with NumPy.
+
 ---
 
 ## Config file parameters
+Find below an overview of the configuration file parameters to setup the renderer.
 
 | Key                | Type     | Description                                                                   |
 |--------------------|----------|-------------------------------------------------------------------------------|
 | `file_path`        | `string` | Dummy. Overwritten by `--mesh_fpath`.                                         |
 | `out_dir`          | `string` | Directory to store output files.                                              |
-| `num_observations` | `int`    | Number of observations to sample.                                             |
+| `num_observations` | `int`    | Number of camera views to sample.                                             |
 | `mode`             | `string` | Mode of operation (`test` uses Archimedean spiral, `train` samples randomly). |
 | `object`           | `object` | Object-related settings.                                                      |
 | `lighting`         | `object` | Lighting configuration.                                                       |
@@ -71,13 +79,13 @@ Download Blender from the [Blender Download Page](https://www.blender.org/downlo
 
 #### `lighting.ibl`
 
-| Key                | Type      | Description                                                              |
-|--------------------|-----------|--------------------------------------------------------------------------|
-| `enable`           | `boolean` | Enable or disable image-based lighting (IBL).                            |
-| `directory`        | `string`  | Directory containing HDRI environment maps.                              |
-| `file_path`        | `string`  | Path to a specific HDRI file (overridden by random selection if random). |
-| `random_rotation`  | `boolean` | Randomly rotate HDRI environment map.                                    |
-| `rotation_euler_z` | `float`   | Fixed Z-axis rotation for HDRI (if `random_rotation` is false).          |
+| Key                | Type      | Description                                                                          |
+|--------------------|-----------|--------------------------------------------------------------------------------------|
+| `enable`           | `boolean` | Enable or disable image-based lighting (IBL). This will overwrite any other lighting |
+| `directory`        | `string`  | Directory containing HDRI environment maps.                                          |
+| `file_path`        | `string`  | Path to a specific HDRI file (overridden by random selection if random).             |
+| `random_rotation`  | `boolean` | Randomly rotate HDRI environment map around Z-axis.                                  |
+| `rotation_euler_z` | `float`   | Fixed Z-axis rotation for HDRI (if `random_rotation` is false).                      |
 
 #### `lighting.sun_light`
 
