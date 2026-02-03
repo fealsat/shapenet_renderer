@@ -35,7 +35,7 @@
     "background_color": [0.2, 0.2, 0.4, 1.0]
   },
   "rendering": {
-    "use_exr": false,
+    "use_exr": true,
     "use_mvs": false,
     "mvs": [[-0.1, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]],
     "camera": {

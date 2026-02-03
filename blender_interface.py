@@ -318,6 +318,7 @@ class BlenderInterface():
     def render(self, instance_name, positions, write_cam_params=False):
         bpy.context.scene.view_layers["ViewLayer"].use_pass_z = True
         bpy.context.scene.view_layers["ViewLayer"].use_pass_normal = True
+        bpy.context.scene.view_layers["ViewLayer"].use_pass_cryptomatte_object = True
 
         # Create the output directory
         if not os.path.exists(self.out_dir):
