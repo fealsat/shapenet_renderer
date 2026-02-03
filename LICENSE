@@ -1,5 +1,12 @@
 MIT License
 
+Copyright (c) 2025 Felix Sattler
+
+Enhancements including support for new Blender versions, batched rendering and support for photorealistic rendering
+made to original MIT-licensed project by Vincent Sitzmann (2020)
+
+This software includes code from:
+
 Copyright (c) 2020 Vincent Sitzmann
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
